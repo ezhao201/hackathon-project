@@ -66,7 +66,7 @@ const User = {
       passwordHash,
       eligibility: JSON.stringify(studentVerified ? ['Student'] : []),
       studentVerified: studentVerified ? 1 : 0,
-      location: 'Pittsburgh, PA',
+      location: 'Pittsburgh, PA (CMU area)',
       categories: JSON.stringify([]),
     });
     return User.findById(result.lastInsertRowid);
@@ -89,7 +89,7 @@ const User = {
     stmts.updateProfile.run({
       id,
       eligibility: JSON.stringify(cleanEligibility),
-      location: (location || 'Pittsburgh, PA').trim().slice(0, 120),
+      location: (location || 'Pittsburgh, PA (CMU area)').trim().slice(0, 120),
       categories: JSON.stringify(cleanCategories),
       studentVerified: studentVerified ? 1 : 0,
     });

@@ -72,7 +72,9 @@ export default function SearchPage() {
         <form onSubmit={onSubmit} className="relative mt-6" role="search">
           <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
           <input
-            type="search"
+            type="text"
+            inputMode="search"
+            enterKeyHint="search"
             className="input py-3.5 pl-12 pr-12 text-base shadow-card"
             placeholder='Try "laptop" or "Spotify"'
             value={query}
