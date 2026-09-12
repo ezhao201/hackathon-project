@@ -5,10 +5,11 @@ import EmptyState from '../components/EmptyState';
 import PageSpinner from '../components/PageSpinner';
 import Toast from '../components/Toast';
 import Alert from '../components/Alert';
+import { CheckCircleIcon } from '../components/Icons';
 import { useAuth } from '../context/AuthContext';
 import { useClaim } from '../hooks/useClaim';
 import { api } from '../lib/api';
-import { ELIGIBILITY_LABELS } from '../lib/constants';
+import { ELIGIBILITY_OPTIONS, QUALIFY_PHRASES } from '../lib/constants';
 
 const FILTERS = ['All', 'Food', 'Tech', 'Transport', 'Entertainment', 'Health'];
 const SORTS = [
@@ -16,6 +17,47 @@ const SORTS = [
   { value: 'expiring', label: 'Expiring Soon' },
   { value: 'popular', label: 'Most Popular' },
 ];
+
+const optionLabel = (tag) => ELIGIBILITY_OPTIONS.find((o) => o.tag === tag)?.label || tag;
+
+function NoResults({ category, suggestions, includeExpired, onShowExpired, hasTags }) {
+  const top = suggestions.slice(0, 2);
+  const scope = category === 'All' ? 'discounts' : `${category} discounts`;
+
+  let body;
+  if (!hasTags) {
+    body = 'Add eligibility tags to your profile to unlock personalized discounts.';
+  } else if (top.length) {
+    const hint = top
+      .map((s) => `${optionLabel(s.tag)} (${s.count} deal${s.count === 1 ? '' : 's'})`)
+      .join(' or ');
+    body = `No ${scope} match your profile — try adding ${hint} in your eligibility settings.`;
+  } else if (!includeExpired) {
+    body = `No live ${scope} match your profile right now. Some expired deals may still be worth a look.`;
+  } else {
+    body = `No ${scope} match your profile right now. Try another category or check back soon.`;
+  }
+
+  return (
+    <EmptyState
+      icon="🪄"
+      title={category === 'All' ? 'No matching discounts yet' : `No ${category} discounts for you right now`}
+      body={body}
+      action={
+        <div className="flex flex-wrap justify-center gap-2">
+          <Link to="/profile" className="btn-primary">
+            Update eligibility
+          </Link>
+          {!includeExpired && (
+            <button type="button" className="btn-outline" onClick={onShowExpired}>
+              Show expired deals
+            </button>
+          )}
+        </div>
+      }
+    />
+  );
+}
 
 export default function FeedPage() {
   const { user } = useAuth();
@@ -25,6 +67,7 @@ export default function FeedPage() {
   const includeExpired = params.get('expired') === '1';
 
   const [items, setItems] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { claim, toast, dismiss } = useClaim(setItems);
@@ -35,7 +78,11 @@ export default function FeedPage() {
     setError('');
     api.discounts
       .feed({ category, sort, includeExpired })
-      .then((data) => !cancelled && setItems(data.items))
+      .then((data) => {
+        if (cancelled) return;
+        setItems(data.items);
+        setSuggestions(data.meta.suggestions || []);
+      })
       .catch((err) => !cancelled && setError(err.message))
       .finally(() => !cancelled && setLoading(false));
     return () => {
@@ -56,30 +103,36 @@ export default function FeedPage() {
     return [...items].sort((a, b) => Number(prefs.has(b.category)) - Number(prefs.has(a.category)));
   }, [items, user?.categories, category]);
 
+  // Already-claimed deals sit below a divider so "still actionable" is obvious at a glance.
+  const active = ordered.filter((d) => !d.claimed);
+  const claimed = ordered.filter((d) => d.claimed);
+
   const tags = user?.eligibility || [];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-navy">Your discounts</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-3xl font-bold tracking-tight text-navy dark:text-white">Your discounts</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             Showing only deals you qualify for as{' '}
             {tags.length ? (
-              <span className="font-medium text-slate-800">{tags.map((t) => ELIGIBILITY_LABELS[t] || t).join(', ')}</span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">
+                {tags.map((t) => QUALIFY_PHRASES[t] || t).join(', ')}
+              </span>
             ) : (
-              <span className="font-medium text-slate-800">a general member</span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">a general member</span>
             )}
             .{' '}
-            <Link to="/profile" className="font-medium text-navy hover:underline">
+            <Link to="/profile" className="font-medium text-navy hover:underline dark:text-navy-200">
               Edit profile
             </Link>
           </p>
         </div>
-        <label className="inline-flex items-center gap-2 text-sm text-slate-600">
+        <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-slate-300 text-navy focus:ring-navy"
+            className="h-4 w-4 rounded border-slate-300 text-navy focus:ring-navy dark:border-slate-600 dark:bg-ink-card"
             checked={includeExpired}
             onChange={(e) => update({ expired: e.target.checked ? '1' : null })}
           />
@@ -89,7 +142,7 @@ export default function FeedPage() {
 
       {/* Filter + sort bar */}
       <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0" role="tablist" aria-label="Filter by category">
+        <div className="-mx-4 overflow-x-auto px-4 py-1 md:mx-0 md:px-0" role="tablist" aria-label="Filter by category">
           <div className="flex w-max gap-2">
             {FILTERS.map((f) => (
               <button
@@ -98,9 +151,7 @@ export default function FeedPage() {
                 role="tab"
                 aria-selected={category === f}
                 onClick={() => update({ category: f === 'All' ? null : f })}
-                className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
-                  category === f ? 'bg-navy text-white' : 'border border-slate-200 bg-white text-slate-700 hover:border-navy hover:text-navy'
-                }`}
+                className={category === f ? 'pill-active' : 'pill-idle'}
               >
                 {f}
               </button>
@@ -108,7 +159,7 @@ export default function FeedPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <label htmlFor="sort" className="text-sm text-slate-500">
+          <label htmlFor="sort" className="text-sm text-slate-600 dark:text-slate-400">
             Sort by
           </label>
           <select id="sort" className="input w-auto py-2" value={sort} onChange={(e) => update({ sort: e.target.value })}>
@@ -126,31 +177,50 @@ export default function FeedPage() {
         {loading ? (
           <PageSpinner label="Matching discounts to your profile…" />
         ) : ordered.length === 0 ? (
-          <EmptyState
-            icon="🪄"
-            title={category === 'All' ? 'No matching discounts yet' : `No ${category} discounts for you right now`}
-            body={
-              tags.length
-                ? 'Try another category, include expired deals, or add more eligibility tags to your profile.'
-                : 'Add eligibility tags to your profile to unlock personalized discounts.'
-            }
-            action={
-              <Link to="/profile" className="btn-primary">
-                Update profile
-              </Link>
-            }
+          <NoResults
+            category={category}
+            suggestions={suggestions}
+            includeExpired={includeExpired}
+            onShowExpired={() => update({ expired: '1' })}
+            hasTags={tags.length > 0}
           />
         ) : (
           <>
-            <p className="mb-3 text-xs text-slate-500">
-              {ordered.length} deal{ordered.length === 1 ? '' : 's'}
+            <p className="mb-3 text-xs text-slate-600 dark:text-slate-400">
+              {active.length} deal{active.length === 1 ? '' : 's'} to claim
+              {claimed.length ? ` · ${claimed.length} claimed` : ''}
               {user?.categories?.length && category === 'All' ? ' · your preferred categories are shown first' : ''}
             </p>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {ordered.map((d) => (
-                <DiscountCard key={d.id} discount={d} onClaim={claim} />
-              ))}
-            </div>
+            {active.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {active.map((d) => (
+                  <DiscountCard key={d.id} discount={d} onClaim={claim} />
+                ))}
+              </div>
+            ) : (
+              <p className="card px-5 py-6 text-center text-sm text-slate-600 dark:text-slate-400">
+                You&apos;ve claimed everything here. Nice work — check back for new deals.
+              </p>
+            )}
+
+            {claimed.length > 0 && (
+              <section aria-labelledby="claimed-heading" className="mt-10">
+                <div className="mb-4 flex items-center gap-3">
+                  <h2
+                    id="claimed-heading"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400"
+                  >
+                    <CheckCircleIcon className="h-4 w-4 text-accent" /> Claimed
+                  </h2>
+                  <span className="h-px flex-1 bg-slate-200 dark:bg-ink-border" aria-hidden="true" />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {claimed.map((d) => (
+                    <DiscountCard key={d.id} discount={d} onClaim={claim} />
+                  ))}
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>

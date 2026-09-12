@@ -63,6 +63,7 @@ export const api = {
       request(`/discounts/feed?category=${encodeURIComponent(category)}&sort=${sort}&includeExpired=${includeExpired}`),
     search: (q) => request(`/discounts/search?q=${encodeURIComponent(q)}`),
     alerts: () => request('/discounts/alerts'),
+    matchCount: (eligibility) => request('/discounts/match-count', { method: 'POST', body: { eligibility } }),
     claim: (id) => request(`/discounts/${id}/claim`, { method: 'POST' }),
   },
 };

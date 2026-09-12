@@ -25,17 +25,27 @@ function sortDiscounts(list, sort) {
 router.get('/feed', (req, res) => {
   const { category = 'All', sort = 'newest', includeExpired = 'false' } = req.query;
   const claimedIds = ClaimedDeal.claimedIdSet(req.user.id);
+  const categoryFilter = category && category !== 'All' && CATEGORIES.includes(category) ? category : null;
 
-  let items = Discount.all()
-    .map((d) => Discount.decorate(d, req.user, claimedIds))
-    .filter((d) => d.eligible);
+  const all = Discount.all().map((d) => Discount.decorate(d, req.user, claimedIds));
+  let items = all.filter((d) => d.eligible);
 
-  if (category && category !== 'All' && CATEGORIES.includes(category)) {
-    items = items.filter((d) => d.category === category);
+  if (categoryFilter) items = items.filter((d) => d.category === categoryFilter);
+  if (includeExpired !== 'true') items = items.filter((d) => !d.isExpired);
+
+  // When nothing matches, tell the client which eligibility tags would unlock deals in this view.
+  const userTags = new Set(req.user.eligibility);
+  const suggestionCounts = {};
+  for (const d of all) {
+    if (d.eligible || d.isExpired) continue;
+    if (categoryFilter && d.category !== categoryFilter) continue;
+    for (const tag of d.eligibility) {
+      if (!userTags.has(tag)) suggestionCounts[tag] = (suggestionCounts[tag] || 0) + 1;
+    }
   }
-  if (includeExpired !== 'true') {
-    items = items.filter((d) => !d.isExpired);
-  }
+  const suggestions = Object.entries(suggestionCounts)
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count);
 
   res.json({
     items: sortDiscounts(items, sort),
@@ -43,6 +53,7 @@ router.get('/feed', (req, res) => {
       total: items.length,
       categories: ['All', ...CATEGORIES],
       profileTags: req.user.eligibility,
+      suggestions,
     },
   });
 });
@@ -70,6 +81,16 @@ router.get('/search', (req, res) => {
       eligible: items.filter((d) => d.eligible).length,
     },
   });
+});
+
+// POST /api/discounts/match-count { eligibility: [...] }
+// Preview how many live discounts a hypothetical set of tags would unlock (used while editing the profile).
+router.post('/match-count', (req, res) => {
+  const eligibility = Array.isArray(req.body?.eligibility) ? req.body.eligibility : [];
+  const count = Discount.all().filter(
+    (d) => Discount.daysUntil(d.expiry) >= 0 && Discount.evaluateEligibility(d, { eligibility }).eligible,
+  ).length;
+  res.json({ count });
 });
 
 // GET /api/discounts/alerts — eligible, unclaimed-or-claimed deals expiring within 7 days

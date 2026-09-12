@@ -36,7 +36,7 @@ export default function LoginPage() {
       footer={
         <>
           New here?{' '}
-          <Link to="/register" className="font-semibold text-navy hover:underline">
+          <Link to="/register" className="font-semibold text-navy hover:underline dark:text-navy-200">
             Create an account
           </Link>
         </>
@@ -76,7 +76,7 @@ export default function LoginPage() {
         >
           Use demo account
         </button>
-        <p className="text-center text-xs text-slate-500">
+        <p className="text-center text-xs text-slate-600 dark:text-slate-400">
           Demo: <span className="font-mono">demo@andrew.cmu.edu</span> / <span className="font-mono">password123</span>
         </p>
       </form>

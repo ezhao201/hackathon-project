@@ -1,9 +1,17 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        // Dark palette derived from the navy brand color (not generic near-black).
+        ink: {
+          DEFAULT: '#0B1420',
+          card: '#14243A',
+          border: '#22375A',
+          muted: '#1B2E4A',
+        },
         navy: {
           DEFAULT: '#1E3A5F',
           50: '#EEF3F9',

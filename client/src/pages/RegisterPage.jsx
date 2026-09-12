@@ -37,7 +37,7 @@ export default function RegisterPage() {
       footer={
         <>
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-navy hover:underline">
+          <Link to="/login" className="font-semibold text-navy hover:underline dark:text-navy-200">
             Log in
           </Link>
         </>
@@ -67,11 +67,11 @@ export default function RegisterPage() {
             required
           />
           {isEdu ? (
-            <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent-700">
+            <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent-700 dark:text-accent-400">
               <CheckCircleIcon className="h-4 w-4" /> .edu email detected — you&apos;ll be tagged Student verified.
             </p>
           ) : (
-            <p className="mt-1.5 text-xs text-slate-500">Use a .edu email to auto-verify student status.</p>
+            <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-400">Use a .edu email to auto-verify student status.</p>
           )}
         </div>
         <div>
@@ -89,7 +89,7 @@ export default function RegisterPage() {
             minLength={8}
             required
           />
-          <p className="mt-1.5 text-xs text-slate-500">At least 8 characters.</p>
+          <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-400">At least 8 characters.</p>
         </div>
         <button type="submit" className="btn-primary w-full py-3" disabled={submitting}>
           {submitting ? 'Creating account…' : 'Continue to profile setup'}

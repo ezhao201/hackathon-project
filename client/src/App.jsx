@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AlertsProvider } from './context/AlertsContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { IntroProvider } from './context/IntroContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PageSpinner from './components/PageSpinner';
@@ -25,9 +27,11 @@ function PublicOnly({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AlertsProvider>
-          <Routes>
+      <ThemeProvider>
+        <AuthProvider>
+          <AlertsProvider>
+            <IntroProvider>
+              <Routes>
             <Route element={<Layout />}>
               <Route
                 path="/"
@@ -67,9 +71,11 @@ export default function App() {
 
               <Route path="*" element={<NotFoundPage />} />
             </Route>
-          </Routes>
-        </AlertsProvider>
-      </AuthProvider>
+              </Routes>
+            </IntroProvider>
+          </AlertsProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
