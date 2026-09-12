@@ -1,0 +1,381 @@
+/**
+ * Seed the database with mock discounts.
+ * Usage: node seed.js  (or `npm run seed`)
+ */
+require('dotenv').config({ quiet: true });
+const bcrypt = require('bcryptjs');
+const db = require('./db');
+const Discount = require('./models/Discount');
+const User = require('./models/User');
+
+function daysFromNow(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// Core mock entries (as specified in the product brief).
+const CORE_DISCOUNTS = [
+  {
+    id: 1,
+    title: 'Apple Education Discount',
+    brand: 'Apple',
+    description: 'Save up to 10% on Mac and iPad',
+    category: 'Tech',
+    eligibility: ['Student', 'Teacher'],
+    location: 'Online',
+    expiry: '2025-12-31',
+    link: 'https://apple.com/education',
+    estimatedSavings: 100,
+    keywords: 'laptop macbook ipad computer tablet apple education',
+    popularity: 42,
+  },
+  {
+    id: 2,
+    title: 'Spotify Premium Student',
+    brand: 'Spotify',
+    description: '50% off Premium plan',
+    category: 'Entertainment',
+    eligibility: ['Student'],
+    location: 'Online',
+    expiry: '2025-06-30',
+    link: 'https://spotify.com/student',
+    estimatedSavings: 6,
+    keywords: 'music streaming podcast spotify premium',
+    popularity: 58,
+  },
+  {
+    id: 3,
+    title: 'Pittsburgh Port Authority',
+    brand: 'Pittsburgh Regional Transit',
+    description: 'Free or discounted bus rides for CMU students',
+    category: 'Transport',
+    eligibility: ['Student', 'CMU Affiliate'],
+    location: 'Pittsburgh, PA',
+    expiry: '2025-12-31',
+    link: '#',
+    estimatedSavings: 97.5,
+    keywords: 'bus transit commute port authority prt pittsburgh',
+    popularity: 35,
+  },
+  {
+    id: 4,
+    title: 'Amazon Prime Student',
+    brand: 'Amazon',
+    description: '6 months free, then 50% off Prime',
+    category: 'Tech',
+    eligibility: ['Student'],
+    location: 'Online',
+    expiry: '2025-12-31',
+    link: 'https://amazon.com/prime/student',
+    estimatedSavings: 7.5,
+    keywords: 'amazon prime shipping shopping streaming',
+    popularity: 61,
+  },
+  {
+    id: 5,
+    title: 'Veterans Advantage',
+    brand: 'Veterans Advantage',
+    description: 'Exclusive discounts for veterans at 1000+ brands',
+    category: 'General',
+    eligibility: ['Veteran'],
+    location: 'Online',
+    expiry: '2025-12-31',
+    link: '#',
+    estimatedSavings: 25,
+    keywords: 'veteran military brands travel shopping',
+    popularity: 19,
+  },
+  {
+    id: 6,
+    title: 'Harris Grill Student Night',
+    brand: 'Harris Grill',
+    description: '20% off every Tuesday for students',
+    category: 'Food',
+    eligibility: ['Student', 'CMU Affiliate'],
+    location: 'Pittsburgh, PA',
+    expiry: '2025-12-31',
+    link: '#',
+    estimatedSavings: 8,
+    keywords: 'restaurant dinner food bar shadyside tuesday',
+    popularity: 27,
+  },
+];
+
+// Supplementary entries with relative expiry dates so the feed, alerts and
+// every eligibility group have live deals regardless of the current date.
+const EXTRA_DISCOUNTS = [
+  {
+    id: 7,
+    title: 'Giant Eagle Senior Tuesdays',
+    brand: 'Giant Eagle',
+    description: '5% off groceries every Tuesday for shoppers 65+',
+    category: 'Food',
+    eligibility: ['Senior'],
+    location: 'Pittsburgh, PA',
+    expiry: daysFromNow(120),
+    link: '#',
+    estimatedSavings: 12,
+    keywords: 'grocery groceries supermarket food senior',
+    popularity: 22,
+  },
+  {
+    id: 8,
+    title: 'Headspace for Healthcare',
+    brand: 'Headspace',
+    description: 'Free Headspace Plus subscription for healthcare workers',
+    category: 'Health',
+    eligibility: ['Healthcare Worker'],
+    location: 'Online',
+    expiry: daysFromNow(45),
+    link: 'https://headspace.com/health-covid-19',
+    estimatedSavings: 70,
+    keywords: 'meditation mental health wellness app nurse doctor',
+    popularity: 31,
+  },
+  {
+    id: 9,
+    title: 'Adobe Creative Cloud Students & Teachers',
+    brand: 'Adobe',
+    description: '60% off Creative Cloud All Apps',
+    category: 'Tech',
+    eligibility: ['Student', 'Teacher'],
+    location: 'Online',
+    expiry: daysFromNow(200),
+    link: 'https://adobe.com/creativecloud/buy/students.html',
+    estimatedSavings: 35,
+    keywords: 'photoshop illustrator design software laptop creative',
+    popularity: 48,
+  },
+  {
+    id: 10,
+    title: 'Comcast Internet Essentials',
+    brand: 'Xfinity',
+    description: 'Home internet for $9.95/month for SNAP/EBT households',
+    category: 'Tech',
+    eligibility: ['Low-income'],
+    location: 'Pittsburgh, PA',
+    expiry: daysFromNow(300),
+    link: 'https://internetessentials.com',
+    estimatedSavings: 40,
+    keywords: 'internet wifi broadband home snap ebt',
+    popularity: 17,
+  },
+  {
+    id: 11,
+    title: 'Pittsburgh Zoo Military Discount',
+    brand: 'Pittsburgh Zoo & Aquarium',
+    description: '$3 off admission for active military and veterans',
+    category: 'Entertainment',
+    eligibility: ['Veteran'],
+    location: 'Pittsburgh, PA',
+    expiry: daysFromNow(5),
+    link: '#',
+    estimatedSavings: 3,
+    keywords: 'zoo aquarium family outing weekend',
+    popularity: 9,
+  },
+  {
+    id: 12,
+    title: 'Carnegie Museums Free Admission',
+    brand: 'Carnegie Museums of Pittsburgh',
+    description: 'Free admission for CMU students, faculty and staff',
+    category: 'Entertainment',
+    eligibility: ['CMU Affiliate', 'Student'],
+    location: 'Pittsburgh, PA',
+    expiry: daysFromNow(3),
+    link: 'https://carnegiemuseums.org',
+    estimatedSavings: 25,
+    keywords: 'museum art natural history oakland culture',
+    popularity: 40,
+  },
+  {
+    id: 13,
+    title: 'CVS ExtraCare Senior Day',
+    brand: 'CVS Pharmacy',
+    description: '20% off regular-price items on the first Wednesday of the month',
+    category: 'Health',
+    eligibility: ['Senior'],
+    location: 'Online',
+    expiry: daysFromNow(60),
+    link: 'https://cvs.com',
+    estimatedSavings: 10,
+    keywords: 'pharmacy vitamins medicine drugstore health',
+    popularity: 14,
+  },
+  {
+    id: 14,
+    title: 'Uber Teacher Appreciation',
+    brand: 'Uber',
+    description: '25% off 5 rides for verified educators',
+    category: 'Transport',
+    eligibility: ['Teacher'],
+    location: 'Pittsburgh, PA',
+    expiry: daysFromNow(6),
+    link: 'https://uber.com',
+    estimatedSavings: 15,
+    keywords: 'rideshare ride taxi commute teacher',
+    popularity: 12,
+  },
+  {
+    id: 15,
+    title: 'Chipotle Healthcare Heroes BOGO',
+    brand: 'Chipotle',
+    description: 'Buy one entrée, get one free for healthcare workers',
+    category: 'Food',
+    eligibility: ['Healthcare Worker'],
+    location: 'Pittsburgh, PA',
+    expiry: daysFromNow(14),
+    link: 'https://chipotle.com',
+    estimatedSavings: 11,
+    keywords: 'burrito lunch dinner mexican fast casual food',
+    popularity: 33,
+  },
+  {
+    id: 16,
+    title: 'Planet Fitness Student Summer Pass',
+    brand: 'Planet Fitness',
+    description: 'Free gym membership for students all summer',
+    category: 'Health',
+    eligibility: ['Student'],
+    location: 'Pittsburgh, PA',
+    expiry: daysFromNow(90),
+    link: 'https://planetfitness.com',
+    estimatedSavings: 25,
+    keywords: 'gym fitness workout exercise health',
+    popularity: 29,
+  },
+  {
+    id: 17,
+    title: 'GitHub Student Developer Pack',
+    brand: 'GitHub',
+    description: 'Free developer tools, cloud credits and domains for students',
+    category: 'Tech',
+    eligibility: ['Student', 'CMU Affiliate'],
+    location: 'Online',
+    expiry: daysFromNow(365),
+    link: 'https://education.github.com/pack',
+    estimatedSavings: 200,
+    keywords: 'developer coding software laptop cloud domain programming',
+    popularity: 74,
+  },
+  {
+    id: 18,
+    title: 'AMC Senior Tickets',
+    brand: 'AMC Theatres',
+    description: 'Discounted movie tickets for guests 60+',
+    category: 'Entertainment',
+    eligibility: ['Senior'],
+    location: 'Pittsburgh, PA',
+    expiry: daysFromNow(180),
+    link: 'https://amctheatres.com',
+    estimatedSavings: 4,
+    keywords: 'movie cinema film theater entertainment',
+    popularity: 11,
+  },
+  {
+    id: 19,
+    title: 'Home Depot Military Discount',
+    brand: 'The Home Depot',
+    description: '10% off eligible purchases for military and veterans',
+    category: 'General',
+    eligibility: ['Veteran'],
+    location: 'Online',
+    expiry: daysFromNow(365),
+    link: 'https://homedepot.com/c/military-discount',
+    estimatedSavings: 30,
+    keywords: 'hardware tools home improvement military veteran',
+    popularity: 26,
+  },
+  {
+    id: 20,
+    title: 'Lyft Community Pass',
+    brand: 'Lyft',
+    description: '50% off rides to grocery stores for SNAP recipients',
+    category: 'Transport',
+    eligibility: ['Low-income'],
+    location: 'Pittsburgh, PA',
+    expiry: daysFromNow(2),
+    link: 'https://lyft.com',
+    estimatedSavings: 9,
+    keywords: 'rideshare ride grocery snap ebt transport',
+    popularity: 8,
+  },
+];
+
+const DISCOUNTS = [...CORE_DISCOUNTS, ...EXTRA_DISCOUNTS];
+
+// Ready-made login for demos. A .edu address so the student flow is verified.
+const DEMO_USER = {
+  name: 'Demo Student',
+  email: 'demo@andrew.cmu.edu',
+  password: 'password123',
+  eligibility: ['Student', 'CMU Affiliate'],
+  categories: ['Food', 'Tech'],
+};
+
+// Claims spread over the last few days so the dashboard shows a streak and chart data.
+const DEMO_CLAIMS = [
+  { discountId: 17, daysAgo: 0 },
+  { discountId: 9, daysAgo: 1 },
+  { discountId: 12, daysAgo: 2 },
+  { discountId: 16, daysAgo: 6 },
+];
+
+function seedDiscounts() {
+  const run = db.transaction(() => {
+    Discount.deleteAll();
+    for (const d of DISCOUNTS) Discount.insert(d);
+  });
+  run();
+  return DISCOUNTS.length;
+}
+
+function seedDemoUser() {
+  let user = User.findByEmail(DEMO_USER.email);
+  if (!user) {
+    user = User.create({
+      name: DEMO_USER.name,
+      email: DEMO_USER.email,
+      passwordHash: bcrypt.hashSync(DEMO_USER.password, 10),
+    });
+    User.updateProfile(user.id, {
+      eligibility: DEMO_USER.eligibility,
+      categories: DEMO_USER.categories,
+    });
+  }
+
+  const insertClaim = db.prepare(`
+    INSERT OR IGNORE INTO claimed_deals (user_id, discount_id, amount_saved, claimed_at)
+    VALUES (@userId, @discountId, @amountSaved, @claimedAt)
+  `);
+  for (const { discountId, daysAgo } of DEMO_CLAIMS) {
+    const discount = Discount.findById(discountId);
+    if (!discount) continue;
+    const when = new Date();
+    when.setDate(when.getDate() - daysAgo);
+    when.setHours(12, 0, 0, 0);
+    insertClaim.run({
+      userId: user.id,
+      discountId,
+      amountSaved: discount.estimatedSavings,
+      claimedAt: when.toISOString(),
+    });
+  }
+  return DEMO_USER;
+}
+
+function seed() {
+  const count = seedDiscounts();
+  seedDemoUser();
+  return count;
+}
+
+if (require.main === module) {
+  const count = seed();
+  console.log(`Seeded ${count} discounts into ${db.path}`);
+  console.log(`Demo login: ${DEMO_USER.email} / ${DEMO_USER.password}`);
+  db.close();
+}
+
+module.exports = { seed, seedDiscounts, seedDemoUser, DISCOUNTS, DEMO_USER };
