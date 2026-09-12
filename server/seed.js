@@ -314,7 +314,7 @@ function seed() {
 
 if (require.main === module) {
   const count = seed();
-  console.log(`Seeded ${count} discounts into ${db.name}`);
+  console.log(`Seeded ${count} discounts into ${db.path}`);
   db.close();
 }
 

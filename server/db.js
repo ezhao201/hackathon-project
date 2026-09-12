@@ -1,14 +1,39 @@
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
+
+// node:sqlite is built into Node >= 22.13, so there is no native module to compile.
+// Some versions emit an ExperimentalWarning when it is first required; silence just that one.
+const originalEmit = process.emitWarning;
+process.emitWarning = (warning, ...args) => {
+  const msg = typeof warning === 'string' ? warning : warning?.message || '';
+  if (msg.includes('SQLite is an experimental feature')) return;
+  originalEmit.call(process, warning, ...args);
+};
+
+const { DatabaseSync } = require('node:sqlite');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'kemmdiscount.db');
 
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const db = new DatabaseSync(DB_PATH);
+db.exec('PRAGMA journal_mode = WAL');
+db.exec('PRAGMA foreign_keys = ON');
+
+// Small helper mirroring better-sqlite3's transaction() API.
+db.transaction = (fn) => (...args) => {
+  db.exec('BEGIN');
+  try {
+    const result = fn(...args);
+    db.exec('COMMIT');
+    return result;
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+};
+
+db.path = DB_PATH;
 
 // Privacy: the users table intentionally stores only name, email, password hash,
 // eligibility tags, location preference and preferred categories.

@@ -12,7 +12,7 @@ deals you personally qualify for.
 | -------- | --------------------------------------------------- |
 | Frontend | React 19 + Vite + Tailwind CSS + React Router + Recharts |
 | Backend  | Node.js + Express 5                                 |
-| Database | SQLite via `better-sqlite3` (zero-config, file based) |
+| Database | SQLite via Node's built-in `node:sqlite` (no native build step) |
 | Auth     | JWT (bcrypt password hashing)                       |
 
 ## Project structure
