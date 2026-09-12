@@ -34,12 +34,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong' });
 });
 
-// Auto-seed an empty database so a fresh clone works out of the box.
+// Auto-seed an empty database so a fresh clone works out of the box,
+// and make sure the demo login always exists.
+const { seedDiscounts, seedDemoUser } = require('./seed');
 if (Discount.all().length === 0) {
-  const { seed } = require('./seed');
-  const count = seed();
+  const count = seedDiscounts();
   console.log(`Database was empty — seeded ${count} discounts`);
 }
+const demo = seedDemoUser();
+console.log(`Demo login: ${demo.email} / ${demo.password}`);
 
 app.listen(PORT, () => {
   console.log(`KEMMDiscount API listening on http://localhost:${PORT}`);

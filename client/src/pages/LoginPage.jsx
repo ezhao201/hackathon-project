@@ -68,6 +68,17 @@ export default function LoginPage() {
         <button type="submit" className="btn-primary w-full py-3" disabled={submitting}>
           {submitting ? 'Logging in…' : 'Log in'}
         </button>
+        <button
+          type="button"
+          className="btn-outline w-full"
+          disabled={submitting}
+          onClick={() => setForm({ email: 'demo@andrew.cmu.edu', password: 'password123' })}
+        >
+          Use demo account
+        </button>
+        <p className="text-center text-xs text-slate-500">
+          Demo: <span className="font-mono">demo@andrew.cmu.edu</span> / <span className="font-mono">password123</span>
+        </p>
       </form>
     </AuthShell>
   );

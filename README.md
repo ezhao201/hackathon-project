@@ -28,6 +28,10 @@ deals you personally qualify for.
 
 ## Getting started
 
+Requires **Node.js 22.13 or newer** (Node 24 recommended). No Python or C++ build tools are needed.
+
+On Windows PowerShell, run each command on its own line (`&&` is not supported in PowerShell 5.1).
+
 ```bash
 # 1. Install dependencies for both apps (and the root dev helper)
 npm install
@@ -39,6 +43,16 @@ npm run seed
 # 3. Run backend (http://localhost:5000) and frontend (http://localhost:5173) together
 npm run dev
 ```
+
+### Demo login
+
+A demo account is created automatically on server start:
+
+- **Email:** `demo@andrew.cmu.edu`
+- **Password:** `password123`
+
+It's a verified student / CMU affiliate with a few pre-claimed deals so the savings dashboard has data.
+The login page also has a "Use demo account" button that fills these in.
 
 Or run them separately: `npm run dev --prefix server` and `npm run dev --prefix client`.
 The Vite dev server proxies `/api/*` to the Express server.

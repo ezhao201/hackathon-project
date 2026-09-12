@@ -3,8 +3,10 @@
  * Usage: node seed.js  (or `npm run seed`)
  */
 require('dotenv').config({ quiet: true });
+const bcrypt = require('bcryptjs');
 const db = require('./db');
 const Discount = require('./models/Discount');
+const User = require('./models/User');
 
 function daysFromNow(n) {
   const d = new Date();
@@ -303,7 +305,24 @@ const EXTRA_DISCOUNTS = [
 
 const DISCOUNTS = [...CORE_DISCOUNTS, ...EXTRA_DISCOUNTS];
 
-function seed() {
+// Ready-made login for demos. A .edu address so the student flow is verified.
+const DEMO_USER = {
+  name: 'Demo Student',
+  email: 'demo@andrew.cmu.edu',
+  password: 'password123',
+  eligibility: ['Student', 'CMU Affiliate'],
+  categories: ['Food', 'Tech'],
+};
+
+// Claims spread over the last few days so the dashboard shows a streak and chart data.
+const DEMO_CLAIMS = [
+  { discountId: 17, daysAgo: 0 },
+  { discountId: 9, daysAgo: 1 },
+  { discountId: 12, daysAgo: 2 },
+  { discountId: 16, daysAgo: 6 },
+];
+
+function seedDiscounts() {
   const run = db.transaction(() => {
     Discount.deleteAll();
     for (const d of DISCOUNTS) Discount.insert(d);
@@ -312,10 +331,51 @@ function seed() {
   return DISCOUNTS.length;
 }
 
+function seedDemoUser() {
+  let user = User.findByEmail(DEMO_USER.email);
+  if (!user) {
+    user = User.create({
+      name: DEMO_USER.name,
+      email: DEMO_USER.email,
+      passwordHash: bcrypt.hashSync(DEMO_USER.password, 10),
+    });
+    User.updateProfile(user.id, {
+      eligibility: DEMO_USER.eligibility,
+      categories: DEMO_USER.categories,
+    });
+  }
+
+  const insertClaim = db.prepare(`
+    INSERT OR IGNORE INTO claimed_deals (user_id, discount_id, amount_saved, claimed_at)
+    VALUES (@userId, @discountId, @amountSaved, @claimedAt)
+  `);
+  for (const { discountId, daysAgo } of DEMO_CLAIMS) {
+    const discount = Discount.findById(discountId);
+    if (!discount) continue;
+    const when = new Date();
+    when.setDate(when.getDate() - daysAgo);
+    when.setHours(12, 0, 0, 0);
+    insertClaim.run({
+      userId: user.id,
+      discountId,
+      amountSaved: discount.estimatedSavings,
+      claimedAt: when.toISOString(),
+    });
+  }
+  return DEMO_USER;
+}
+
+function seed() {
+  const count = seedDiscounts();
+  seedDemoUser();
+  return count;
+}
+
 if (require.main === module) {
   const count = seed();
   console.log(`Seeded ${count} discounts into ${db.path}`);
+  console.log(`Demo login: ${DEMO_USER.email} / ${DEMO_USER.password}`);
   db.close();
 }
 
-module.exports = { seed, DISCOUNTS };
+module.exports = { seed, seedDiscounts, seedDemoUser, DISCOUNTS, DEMO_USER };
